@@ -36,7 +36,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Label HorizontalAlignment="Center"  Content="Out" Margin="18,12,18.6,-0.4" />
-                <TextBox Padding="3" Grid.Column="1" />
+                <TextBox Name="out_folder_text" LostFocus="out_folder_text_LostFocus" Padding="3" Grid.Column="1" />
             </Grid>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -44,7 +44,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Label HorizontalAlignment="Center"  Content="Log" Margin="18,12,18.6,-0.4" />
-                <TextBox Padding="3" Grid.Column="1" />
+                <TextBox Name="log_file_text" LostFocus="log_file_text_LostFocus" Padding="3" Grid.Column="1" />
             </Grid>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -52,7 +52,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Label HorizontalAlignment="Center"  Content="Error" Margin="18,12,18.6,-0.4" />
-                <TextBox Padding="3" Grid.Column="1" />
+                <TextBox Name="error_file_text" LostFocus="error_file_text_LostFocus" Padding="3" Grid.Column="1" />
             </Grid>
         </StackPanel>
         <Button Grid.Column="1"

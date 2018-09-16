@@ -26,11 +26,29 @@ namespace reficio
             InitializeComponent();
             DataContext = this;
             in_folder_text.Text = ConfigurationManager.AppSettings.Get("in_folder");
+            out_folder_text.Text = ConfigurationManager.AppSettings.Get("out_folder");
+            log_file_text.Text = ConfigurationManager.AppSettings.Get("log_file");
+            error_file_text.Text = ConfigurationManager.AppSettings.Get("error_file");
         }
 
         private void in_folder_text_LostFocus(object sender, RoutedEventArgs e)
         {
             UpdateSetting("in_folder", in_folder_text.Text);
+        }
+
+        private void out_folder_text_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateSetting("out_folder", out_folder_text.Text);
+        }
+
+        private void log_file_text_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateSetting("log_file", log_file_text.Text);
+        }
+
+        private void error_file_text_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateSetting("error_file", error_file_text.Text);
         }
 
         private static void UpdateSetting(string key, string value)
@@ -41,5 +59,6 @@ namespace reficio
 
             ConfigurationManager.RefreshSection("appSettings");
         }
+
     }
 }
