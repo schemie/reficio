@@ -54,14 +54,6 @@
                 <Label HorizontalAlignment="Center"  Content="Error" Margin="18,12,18.6,-0.4" />
                 <TextBox Padding="3" Grid.Column="1" />
             </Grid>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width=".2*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <CheckBox HorizontalAlignment="Center" />
-                <TextBox Padding="3" Grid.Column="1" />
-            </Grid>
         </StackPanel>
         <Button Grid.Column="1"
           Style="{StaticResource MaterialDesignFloatingActionButton}"
