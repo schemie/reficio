@@ -125,9 +125,7 @@ namespace reficio
 
             Object locker = new Object();
 
-            var taskList = new List<Task>();
-            
-            taskList.Add(Task.Factory.StartNew(() => Parallel.ForEach(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories), new ParallelOptions() { MaxDegreeOfParallelism = cores }, (file) =>
+            Task.Factory.StartNew(() => Parallel.ForEach(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories), new ParallelOptions() { MaxDegreeOfParallelism = cores }, (file) =>
             {
 
 
@@ -146,18 +144,16 @@ namespace reficio
                     string file_html = toHTML(file, error_file);
                     generatePDF(parent_folder, file_html, pdf_out);
 
-                    lock (locker)
-                    {
-                        sw.WriteLine(pdf_out);
-                        sw.Flush();
-                    }
+                    //lock (locker)
+                    //{
+                    //    sw.WriteLine(pdf_out);
+                    //    sw.Flush();
+                    //}
                     count++;
                     Console.WriteLine(pdf_out);
                 }
 
-            })));
-
-            Task.WaitAll(taskList.ToArray());
+            }));
 
             watch.Stop();
             var elapsedMs = milliReadable(watch.ElapsedMilliseconds);
