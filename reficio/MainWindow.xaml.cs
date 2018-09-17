@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.IO;
@@ -17,14 +18,19 @@ using System.Windows.Shapes;
 using Shark.PdfConvert;
 using RtfPipe;
 using System.Reflection;
+using System.Collections.Concurrent;
 
 namespace reficio
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    /// 
+
     public partial class MainWindow : Window
     {
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -36,7 +42,10 @@ namespace reficio
             error_file_text.Text = ConfigurationManager.AppSettings.Get("error_file");
             overwritefiles_checkbox.IsChecked = bool.Parse(ConfigurationManager.AppSettings.Get("overwrite_files").ToString());
 
-
+            TextBoxOutputter outputter;
+            outputter = new TextBoxOutputter(textbox_console);
+            Console.SetOut(outputter);
+            Console.WriteLine("Started");
         }
 
         private void in_folder_text_LostFocus(object sender, RoutedEventArgs e)
@@ -85,7 +94,6 @@ namespace reficio
             Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             configuration.AppSettings.Settings[key].Value = value;
             configuration.Save();
-
             ConfigurationManager.RefreshSection("appSettings");
         }
 
@@ -99,51 +107,80 @@ namespace reficio
             string log_file = log_file_text.Text;
             string error_file = error_file_text.Text;
             bool overwrite_files = overwritefiles_checkbox.IsChecked.HasValue ? overwritefiles_checkbox.IsChecked.Value : false;
+            int cores = Int32.Parse(cmbCores.Text);
 
+            processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores);
+            //new Thread(processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores)).Start;
+        }
 
+        private static void processFiles(string in_folder, string out_folder, string log_file, string error_file, bool overwrite_files, int cores)
+        {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            //loop through each folder inside the in folder - write folder name to console
-            //foreach (var patientFolder in Directory.EnumerateDirectories(in_folder))
-            //{
-            //    List<string> file_names = ProcessFiles(patientFolder, in_folder, out_folder, cores, overwrite_files, error_file);
-            //    foreach (String s in file_names)
-            //    {
-            //        File.AppendAllText(ConfigurationManager.AppSettings["log_file"], s + Environment.NewLine);
-            //    }
-            //}
+            int count = 0;
 
-            foreach (string file in System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories))
+            FileStream fs = new FileStream(ConfigurationManager.AppSettings["log_file"], FileMode.Append, FileAccess.Write, FileShare.Read);
+
+            StreamWriter sw = new StreamWriter(fs);
+
+            Object locker = new Object();
+
+            var taskList = new List<Task>();
+            
+            taskList.Add(Task.Factory.StartNew(() => Parallel.ForEach(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories), new ParallelOptions() { MaxDegreeOfParallelism = cores }, (file) =>
             {
-                //do something with file
-                //ProcessFiles(file, in_folder, out_folder, cores, overwrite_files, error_file);
-                string file_html = toHTML(file, error_file);
-                string file_folder = System.IO.Path.GetDirectoryName(file).Replace(in_folder, out_folder);
-                string pdf_out = file.Replace(in_folder, out_folder) + ".pdf";
-                generatePDF(in_folder, out_folder, file_folder, file_html);
-                File.AppendAllText(ConfigurationManager.AppSettings["log_file"], pdf_out + Environment.NewLine);
-            }
+
+
+                string parent_folder = System.IO.Path.GetDirectoryName(file).Replace(in_folder, out_folder);
+                //string pdf_out = System.IO.Path.ChangeExtension(file.Replace(in_folder, out_folder), ".pdf");
+                string pdf_out = System.IO.Path.ChangeExtension(file.Replace(in_folder, out_folder), ".pdf");
+
+                //bool.Parse(ConfigurationManager.AppSettings.Get("overwrite_files");
+
+                if (overwrite_files == false && File.Exists(pdf_out))
+                {
+                    return;
+                }
+                else
+                {
+                    string file_html = toHTML(file, error_file);
+                    generatePDF(parent_folder, file_html, pdf_out);
+
+                    lock (locker)
+                    {
+                        sw.WriteLine(pdf_out);
+                        sw.Flush();
+                    }
+                    count++;
+                    Console.WriteLine(pdf_out);
+                }
+
+            })));
+
+            Task.WaitAll(taskList.ToArray());
 
             watch.Stop();
             var elapsedMs = milliReadable(watch.ElapsedMilliseconds);
-            //Console.WriteLine("Elapsed time - {0}", elapsedMs);
-            //Console.WriteLine("Files processed  - {0}", count);
-            //Console.WriteLine("Average files per second - {0}", count / (watch.ElapsedMilliseconds / 1000.0));
 
-            //File.AppendAllText(log_file, "Elapsed time - " + elapsedMs + Environment.NewLine);
-            //File.AppendAllText(log_file, "Files processed  - " + count + Environment.NewLine);
-            //File.AppendAllText(log_file, "Average files per second - " + count / (watch.ElapsedMilliseconds / 1000.0) + Environment.NewLine);
+            Console.WriteLine("Elapsed time - {0}", elapsedMs);
+            Console.WriteLine("Files processed  - {0}", count);
+            Console.WriteLine("Average files per second - {0}", count / (watch.ElapsedMilliseconds / 1000.0));
 
-            //keep console open until a key is pressed
-            //Console.WriteLine("Press enter to close window...");
-            //Console.ReadLine();
+            lock (locker)
+            {
+                sw.WriteLine("Elapsed time - " + elapsedMs);
+                sw.WriteLine("Files processed  - " + count);
+                sw.WriteLine("Average files per second - " + count / (watch.ElapsedMilliseconds / 1000.0));
+                sw.Flush();
+            }
+
+            sw.Close();
+            fs.Close();
         }
 
-        private static void generatePDF(string in_folder, string out_folder, string sdid_folder, string html_stream)
+        private static void generatePDF(string out_folder, string html_stream, string pdf_out)
         {
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(sdid_folder).Replace(in_folder, out_folder));
-            string pdf_out = sdid_folder.Replace(in_folder, out_folder) + ".pdf";
-
+            System.IO.Directory.CreateDirectory(out_folder);
             //convert to pdf - shark.pdfconvert
             PdfConvert.Convert(new PdfConversionSettings
             {
@@ -153,7 +190,6 @@ namespace reficio
             });
         }
 
-        
         private static string PlainTextToRtf(string plainText) //simple method to wrap RTF tags around plain text - allows it to be treated as RTF by rtfpipe
         {
             string escapedPlainText = plainText.Replace(@"\", @"\\").Replace("{", @"\{").Replace("}", @"\}");
@@ -249,11 +285,6 @@ namespace reficio
             }
 
             return html;
-        }
-
-        private void cmbCores_Selected(object sender, RoutedEventArgs e)
-        {
-            int cores = (int)(cmbCores.SelectedItem as PropertyInfo).GetValue(null, null);
         }
     }
 }
