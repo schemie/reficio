@@ -8,17 +8,11 @@ using System.Windows;
 using System.IO;
 using System.Configuration;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Shark.PdfConvert;
 using RtfPipe;
-using System.Reflection;
-using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Windows.Threading;
 
 namespace reficio
 {
@@ -27,14 +21,21 @@ namespace reficio
     /// </summary>
     /// 
 
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
 
+        public int count { get; set; }
+
+        public string TimeElapsed { get; set; }
+        public double Average { get; set; }
+        public int Exception_Count { get; set; }
+        private DispatcherTimer timer;
+        private Stopwatch stopWatch;
 
         public MainWindow()
         {
             InitializeComponent();
-            //DataContext = this;
+            this.DataContext = this;
 
             in_folder_text.Text = ConfigurationManager.AppSettings.Get("in_folder");
             out_folder_text.Text = ConfigurationManager.AppSettings.Get("out_folder");
@@ -45,7 +46,31 @@ namespace reficio
             TextBoxOutputter outputter;
             outputter = new TextBoxOutputter(textbox_console);
             Console.SetOut(outputter);
-            Console.WriteLine("Started");
+            //Console.WriteLine("Started");
+        }
+
+        public void StartTimer()
+        {
+            timer = new DispatcherTimer();
+            timer.Tick += dispatcherTimerTick_;
+            timer.Interval = new TimeSpan(0, 0, 0, 1, 0);
+            stopWatch = new Stopwatch();
+            stopWatch.Start();
+            timer.Start();
+        }
+
+        public void StopTimer()
+        {
+            stopWatch.Stop();
+            timer.Stop();
+        }
+
+        private void dispatcherTimerTick_(object sender, EventArgs e)
+        {
+            TimeElapsed = displayTimer(stopWatch.Elapsed.TotalMilliseconds); // Format as you wish
+            PropertyChanged(this, new PropertyChangedEventArgs("TimeElapsed"));
+            Average = Math.Round(count / (stopWatch.Elapsed.TotalMilliseconds / 1000.0), 2);
+            PropertyChanged(this, new PropertyChangedEventArgs("Average"));
         }
 
         private void in_folder_text_LostFocus(object sender, RoutedEventArgs e)
@@ -77,7 +102,14 @@ namespace reficio
         {
             // ... A List.
             List<int> data = new List<int>();
-            data =  Enumerable.Range(1, Environment.ProcessorCount - 2).ToList();
+
+            if (Environment.ProcessorCount <= 4)
+            {
+                data = Enumerable.Range(1, Environment.ProcessorCount).ToList();
+            } else
+            {
+                data = Enumerable.Range(1, Environment.ProcessorCount - 2).ToList();
+            };
 
             // ... Get the ComboBox reference.
             var comboBox = sender as ComboBox;
@@ -97,9 +129,8 @@ namespace reficio
             ConfigurationManager.RefreshSection("appSettings");
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private async void Button_Click(object sender, RoutedEventArgs e)
         {
-
 
             //int cores = cores.ToString();
             string in_folder = in_folder_text.Text;
@@ -109,15 +140,33 @@ namespace reficio
             bool overwrite_files = overwritefiles_checkbox.IsChecked.HasValue ? overwritefiles_checkbox.IsChecked.Value : false;
             int cores = Int32.Parse(cmbCores.Text);
 
-            processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores);
+            //processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores);
             //new Thread(processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores)).Start;
-        }
 
-        private static void processFiles(string in_folder, string out_folder, string log_file, string error_file, bool overwrite_files, int cores)
-        {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            int count = 0;
+            count = 0;
+            Average = 0;
+            TimeElapsed = "";
+            Count_Display = 0;
+            Exception_Count = 0;
+            PropertyChanged(this, new PropertyChangedEventArgs("TimeElapsed"));
+            PropertyChanged(this, new PropertyChangedEventArgs("Average"));
+            PropertyChanged(this, new PropertyChangedEventArgs("Count_Display"));
+            PropertyChanged(this, new PropertyChangedEventArgs("Exception_Count"));
+
+            StartTimer();
+
+            //await Task.Run(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories) => processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores));
+
+            await Task.Run(() => processFiles(in_folder, out_folder, log_file, error_file, overwrite_files, cores));
+
+            watch.Stop();
+            var elapsedMs = milliReadable(watch.ElapsedMilliseconds);
+
+            Console.WriteLine("Elapsed time - {0}", elapsedMs);
+            Console.WriteLine("Files processed  - {0}", count);
+            Console.WriteLine("Average files per second - {0}", count / (watch.ElapsedMilliseconds / 1000.0));
 
             FileStream fs = new FileStream(ConfigurationManager.AppSettings["log_file"], FileMode.Append, FileAccess.Write, FileShare.Read);
 
@@ -125,9 +174,32 @@ namespace reficio
 
             Object locker = new Object();
 
-            Task.Factory.StartNew(() => Parallel.ForEach(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories), new ParallelOptions() { MaxDegreeOfParallelism = cores }, (file) =>
-            {
 
+            lock (locker)
+            {
+                sw.WriteLine("Elapsed time - " + elapsedMs);
+                sw.WriteLine("Files processed  - " + count);
+                sw.WriteLine("Average files per second - " + count / (watch.ElapsedMilliseconds / 1000.0));
+                sw.Flush();
+            }
+
+            StopTimer();
+
+            sw.Close();
+            fs.Close();
+        }
+
+        private void processFiles(string in_folder, string out_folder, string log_file, string error_file, bool overwrite_files, int cores)
+        {
+
+            FileStream fs = new FileStream(ConfigurationManager.AppSettings["log_file"], FileMode.Append, FileAccess.Write, FileShare.Read);
+
+            StreamWriter sw = new StreamWriter(fs);
+
+            Object locker = new Object();
+
+            Parallel.ForEach(System.IO.Directory.GetFiles(in_folder, "*", SearchOption.AllDirectories), new ParallelOptions() { MaxDegreeOfParallelism = cores }, (file) =>
+            {
 
                 string parent_folder = System.IO.Path.GetDirectoryName(file).Replace(in_folder, out_folder);
                 //string pdf_out = System.IO.Path.ChangeExtension(file.Replace(in_folder, out_folder), ".pdf");
@@ -143,32 +215,19 @@ namespace reficio
                 {
                     string file_html = toHTML(file, error_file);
                     generatePDF(parent_folder, file_html, pdf_out);
-
-                    //lock (locker)
-                    //{
-                    //    sw.WriteLine(pdf_out);
-                    //    sw.Flush();
-                    //}
                     count++;
-                    Console.WriteLine(pdf_out);
+                    Count_Display++;
+                    lock (locker)
+                    {
+                        sw.WriteLine(pdf_out);
+                        sw.Flush();
+                    }
+
+
+                    //Console.WriteLine(pdf_out); //lag city, why write this to console anyway
+                    
                 }
-
-            }));
-
-            watch.Stop();
-            var elapsedMs = milliReadable(watch.ElapsedMilliseconds);
-
-            Console.WriteLine("Elapsed time - {0}", elapsedMs);
-            Console.WriteLine("Files processed  - {0}", count);
-            Console.WriteLine("Average files per second - {0}", count / (watch.ElapsedMilliseconds / 1000.0));
-
-            lock (locker)
-            {
-                sw.WriteLine("Elapsed time - " + elapsedMs);
-                sw.WriteLine("Files processed  - " + count);
-                sw.WriteLine("Average files per second - " + count / (watch.ElapsedMilliseconds / 1000.0));
-                sw.Flush();
-            }
+            });
 
             sw.Close();
             fs.Close();
@@ -202,7 +261,14 @@ namespace reficio
             return answer;
         }
 
-        private static string toHTML(string file, string error_file)
+        private static string displayTimer(double ms) //turn milliseconds into a nice readable string
+        {
+            TimeSpan t = TimeSpan.FromMilliseconds(ms);
+            string answer = t.ToString(@"h\:mm\:ss");
+            return answer;
+        }
+
+        private string toHTML(string file, string error_file)
         {
             string html = ""; //clear html variable for current file
 
@@ -237,6 +303,8 @@ namespace reficio
                                            "" + Environment.NewLine + "Date :" + DateTime.Now.ToString() + Environment.NewLine + file);
                                         writer.WriteLine(Environment.NewLine + "-----------------------------------------------------------------------------" + Environment.NewLine);
                                     }
+                                    Exception_Count++;
+                                    PropertyChanged(this, new PropertyChangedEventArgs("Exception_Count"));
                                 }
                             }
                         }
@@ -282,5 +350,23 @@ namespace reficio
 
             return html;
         }
+
+        private int count_display;
+        public int Count_Display
+        {
+            get { return count_display; }
+            set
+            {
+                count_display = value;
+                RaisePropertyChanged("Count_display");
+            }
+        }
+
+        private void RaisePropertyChanged(string propName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+        }
+        public event PropertyChangedEventHandler PropertyChanged;
+
     }
 }
