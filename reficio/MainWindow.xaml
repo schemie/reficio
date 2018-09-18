@@ -7,7 +7,7 @@
         xmlns:my="clr-namespace:reficio"
         
         mc:Ignorable="d"
-        Title="reficio" Height="450" Width="800"        
+        Title="reficio" Height="500" Width="800"        
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
@@ -72,7 +72,14 @@
                 </StackPanel>
             </Grid>
             <Grid>
-                <TextBox Margin="0 10 0 0"  Height="200" Width="600" x:Name="textbox_console"/>
+                <TextBox
+                    Style="{StaticResource MaterialDesignTextAreaTextBox}"
+                    x:Name="textbox_console"
+                    Margin="110,10,0,-2"
+                    VerticalAlignment="Center"
+                    Height="200"
+                    VerticalScrollBarVisibility="Auto"
+                    materialDesign:HintAssist.Hint="Logging Output" />
             </Grid>
         </StackPanel>
         <Button Name="Button" Click="Button_Click" Grid.Column="1"
