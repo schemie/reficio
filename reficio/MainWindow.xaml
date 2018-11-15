@@ -81,7 +81,7 @@
                     Height="200"
                     MaxLines="2"
                     VerticalScrollBarVisibility="Auto"
-                    materialDesign:HintAssist.Hint="Logging Output" />
+                    materialDesign:HintAssist.Hint="Logging Output . . ." />
             </Grid>
             <Grid>
                 <Grid.ColumnDefinitions>
