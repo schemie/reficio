@@ -73,7 +73,7 @@
             </Grid>
             <Grid>
                 <TextBox
-                    Style="{StaticResource MaterialDesignTextAreaTextBox}"
+                    Style="{StaticResource MaterialDesignOutlinedTextFieldTextBox}"
                     x:Name="textbox_console"
                     IsReadOnly="True"
                     Margin="110,30,0,-2"

@@ -214,7 +214,7 @@ namespace reficio
                 else
                 {
                     string file_html = toHTML(file, error_file);
-                    generatePDF(parent_folder, file_html, pdf_out);
+                    generatePDF(parent_folder, file_html, pdf_out, error_file);
                     count++;
                     Count_Display++;
                     lock (locker)
@@ -233,16 +233,39 @@ namespace reficio
             fs.Close();
         }
 
-        private static void generatePDF(string out_folder, string html_stream, string pdf_out)
+        private void generatePDF(string out_folder, string html_stream, string pdf_out, string error_file)
         {
             System.IO.Directory.CreateDirectory(out_folder);
             //convert to pdf - shark.pdfconvert
-            PdfConvert.Convert(new PdfConversionSettings
+            //PdfConvert.Convert(new PdfConversionSettings
+            //{
+            //    Title = "My Static Content",
+            //    Content = html_stream,
+            //    OutputPath = pdf_out
+            //});
+
+            try
             {
-                Title = "My Static Content",
-                Content = html_stream,
-                OutputPath = pdf_out
-            });
+                PdfConvert.Convert(new PdfConversionSettings
+                {
+                    Title = "My Static Content",
+                    Content = html_stream,
+                    OutputPath = pdf_out
+                });
+            }
+            catch (Exception ex)
+            {
+                //File.AppendAllText(log_file, ex);
+                using (StreamWriter writer = new StreamWriter(error_file, true))
+                {
+                    writer.WriteLine("Message :" + ex.Message + "<br/>" + Environment.NewLine + "StackTrace :" + ex.StackTrace +
+                       "" + Environment.NewLine + "Date :" + DateTime.Now.ToString() + Environment.NewLine + pdf_out);
+                    writer.WriteLine(Environment.NewLine + "-----------------------------------------------------------------------------" + Environment.NewLine);
+                }
+                Exception_Count++;
+                PropertyChanged(this, new PropertyChangedEventArgs("Exception_Count"));
+            }
+
         }
 
         private static string PlainTextToRtf(string plainText) //simple method to wrap RTF tags around plain text - allows it to be treated as RTF by rtfpipe
@@ -352,6 +375,7 @@ namespace reficio
         }
 
         private int count_display;
+
         public int Count_Display
         {
             get { return count_display; }
