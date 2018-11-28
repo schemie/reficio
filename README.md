@@ -10,11 +10,20 @@ This started largly as a project to learn C#. It was originally a console app bu
 
 * Convert plain text, rtf, and HTML to PDF
 * Configurable through the UI or through a config file
-* Restartable (doesn't have to overwrite existing files)
+* Restartable if it crashes/the computer restarts (doesn't have to overwrite existing files)
+* Copy and convert the selected folder along with all sub-folders and files within
 * Multithread
   * Defaults to total cores minus two
   * If four cores or less, lets you select all four
 * Real time statistics displayed in the GUI
+
+# How To Use
+
+* Download and install [wkhtmnltopdf](https://wkhtmltopdf.org/downloads.html)
+* Download and unzip [reficio](https://github.com/schemie/reficio/releases)
+* To set paths and options through the config file open and edit "reficio.exe.config" in the unzipped folder
+* To set paths and options through the UI launch "reficio.exe"
+* Click the blue button and wait for the processing to finish
 
 # To-Do
 
