@@ -4,4 +4,6 @@ Reficio is a simple WPF program to convert plain text, rtf, and HTML files to PD
 
 This started largly as a project to learn C#. It was originally a console app but I was interested in learning a GUI framework. Since I was already learning C#, WPF made sense.
 
+# Main Features
+
 ![Reficio](https://github.com/schemie/reficio/blob/master/reficio_01.png)
