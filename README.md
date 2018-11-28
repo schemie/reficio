@@ -29,5 +29,8 @@ This started largly as a project to continue learning C#. It was originally a co
 
 * Update the main button click handling
    * 2nd click during processing stops the processing
+* Make launchable as a console app or GUI app
+* Have run into a small amount of RTF files the RtFPipe library can't handle
+  * If I can figure out the issues, create a pull request to fix it
 
 
